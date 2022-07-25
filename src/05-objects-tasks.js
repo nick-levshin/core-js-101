@@ -20,8 +20,14 @@
  *    console.log(r.height);      // => 20
  *    console.log(r.getArea());   // => 200
  */
-function Rectangle(/* width, height */) {
-  throw new Error('Not implemented');
+function Rectangle(width, height) {
+  return {
+    width,
+    height,
+    getArea() {
+      return this.width * this.height;
+    },
+  };
 }
 
 
@@ -35,8 +41,8 @@ function Rectangle(/* width, height */) {
  *    [1,2,3]   =>  '[1,2,3]'
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
-function getJSON(/* obj */) {
-  throw new Error('Not implemented');
+function getJSON(obj) {
+  return JSON.stringify(obj);
 }
 
 
@@ -51,8 +57,8 @@ function getJSON(/* obj */) {
  *    const r = fromJSON(Circle.prototype, '{"radius":10}');
  *
  */
-function fromJSON(/* proto, json */) {
-  throw new Error('Not implemented');
+function fromJSON(proto, json) {
+  return new proto.constructor(...Object.values(JSON.parse(json)));
 }
 
 
@@ -110,33 +116,131 @@ function fromJSON(/* proto, json */) {
  *  For more examples see unit tests.
  */
 
+class Builder {
+  constructor() {
+    this.defaultOrder = ['element', 'id', 'class', 'attribute', 'pseudoClass', 'pseudoElement'];
+    this.selectors = new Map();
+    this.combineStorage = [];
+    this.occurErrorMessage = 'Element, id and pseudo-element should not occur more then one time inside the selector';
+    this.orderErrorMessage = 'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element';
+  }
+
+  element(value) {
+    if (this.selectors.has('element')) {
+      throw new Error(this.occurErrorMessage);
+    }
+    this.selectors.set('element', value);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  id(value) {
+    if (this.selectors.has('id')) {
+      throw new Error(this.occurErrorMessage);
+    }
+    this.selectors.set('id', `#${value}`);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  class(value) {
+    if (!this.selectors.has('class')) {
+      this.selectors.set('class', []);
+    }
+    this.selectors.get('class').push(`.${value}`);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  attr(value) {
+    if (!this.selectors.has('attribute')) {
+      this.selectors.set('attribute', []);
+    }
+    this.selectors.get('attribute').push(`[${value}]`);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  pseudoClass(value) {
+    if (!this.selectors.has('pseudoClass')) {
+      this.selectors.set('pseudoClass', []);
+    }
+    this.selectors.get('pseudoClass').push(`:${value}`);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  pseudoElement(value) {
+    if (this.selectors.has('pseudoElement')) {
+      throw new Error(this.occurErrorMessage);
+    }
+    this.selectors.set('pseudoElement', `::${value}`);
+    if (!this.isValidOrder()) {
+      throw new Error(this.orderErrorMessage);
+    }
+    return this;
+  }
+
+  combine(selector1, combinator, selector2) {
+    this.combineStorage.push(
+      ...selector1.selectors.values(),
+      ` ${combinator} `,
+      ...selector2.selectors.values(),
+      ...selector2.combineStorage.values(),
+    );
+    return this;
+  }
+
+  stringify() {
+    if (this.combineStorage.length > 0) return this.combineStorage.flat().join('');
+    return [...this.selectors.values()].flat().join('');
+  }
+
+  isValidOrder() {
+    const keys = [...this.selectors.keys()];
+    const currentOrder = this.defaultOrder.filter((selector) => keys.includes(selector));
+    const validOrder = keys.some((selector, i) => i > currentOrder.indexOf(selector));
+    return !validOrder;
+  }
+}
+
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  element(value) {
+    return new Builder().element(value);
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    return new Builder().id(value);
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    return new Builder().class(value);
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    return new Builder().attr(value);
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    return new Builder().pseudoClass(value);
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    return new Builder().pseudoElement(value);
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    return new Builder().combine(selector1, combinator, selector2);
   },
 };
 
